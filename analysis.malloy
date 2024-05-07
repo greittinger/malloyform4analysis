@@ -1,0 +1,86 @@
+
+
+source: owners is duckdb.table('./REPORTINGOWNER.tsv') extend{
+    dimension: ACCESSION_NUMBER is column00
+    dimension: RPTOWNERNAME is column02
+    dimension: RPTOWNER_RELATIONSHIP is column03
+    primary_key: ACCESSION_NUMBER
+}
+
+source: derivholdings is duckdb.table('./DERIV_HOLDING.tsv') extend{
+    primary_key: ACCESSION_NUMBER
+}
+
+source: derivtrans is duckdb.table('./DERIV_TRANS.tsv') extend{
+    primary_key: ACCESSION_NUMBER
+}
+
+source: nonderivholdings is duckdb.table('./NONDERIV_HOLDING.tsv') extend{
+    primary_key: ACCESSION_NUMBER
+}
+
+source: nonderivtrans is duckdb.table('./NONDERIV_TRANS.tsv') extend{
+    primary_key: ACCESSION_NUMBER
+}
+
+source: analysis is duckdb.table('./SUBMISSION.tsv') extend{
+    primary_key: ACCESSION_NUMBER
+    join_one: owners with ACCESSION_NUMBER
+    join_one: derivholdings with ACCESSION_NUMBER
+    join_one: derivtrans with ACCESSION_NUMBER
+    join_one: nonderivholdings with ACCESSION_NUMBER
+    join_one: nonderivtrans with ACCESSION_NUMBER
+}
+
+# bar_chart
+run: analysis -> {
+    --finding most common filiers of insider trading forms
+    group_by: ISSUERNAME
+    aggregate: issuers is count()
+    having: issuers > 100
+    group_by: DOCUMENT_TYPE
+}
+
+# bar_chart
+run: analysis -> {
+    --finding the most likely relationship of each owner
+    group_by: owners.RPTOWNER_RELATIONSHIP
+    aggregate: mostlikelyrelationship is count()
+    having: mostlikelyrelationship > 2000
+}
+
+# bar_chart
+run: analysis -> {
+    --finding amounts transfered by issuer for derivatives
+    group_by: ISSUERNAME
+    group_by: derivtrans.TRANS_SHARES
+    order_by: TRANS_SHARES desc
+    limit: 10
+   
+}
+
+# bar_chart
+run: analysis -> {
+    --finding amounts transfered by issuer for nonderivatives
+    group_by: ISSUERNAME
+    group_by: nonderivtrans.TRANS_SHARES
+    order_by: TRANS_SHARES desc
+    limit:10
+}
+
+# bar_chart
+run: analysis -> {
+    --shows the most common owners that are transferring the most shares
+    group_by: owners.RPTOWNERNAME
+    group_by: nonderivtrans.TRANS_SHARES
+    order_by: TRANS_SHARES desc
+    limit:10
+}
+
+# bar_chart
+run: analysis -> {
+    --shows the most common owners that are transferring the most shares
+    group_by: owners.RPTOWNERNAME
+    aggregate: numberoftransactions is count(nonderivtrans.TRANS_SHARES)
+    limit:6
+}
